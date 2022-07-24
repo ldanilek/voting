@@ -3,12 +3,15 @@ import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 import { useQuery, useMutation } from '../convex/_generated/react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 const Home: NextPage = () => {
-  const counter = useQuery('getCounter', 'clicks') ?? 0
-  const increment = useMutation('incrementCounter')
-  const incrementByOne = useCallback(() => increment('clicks', 1), [increment])
+  const vote = useMutation('vote');
+  const [election, setElection] = useState("Where should we eat lunch?");
+  const [candidates, setCandidates] = useState("");
+  const electionResults = useQuery('getElectionResults', election);
+  const [voter, setVoter] = useState("");
+  const topChoices = useQuery('getPopularCandidates', election) ?? [];
 
   return (
     <div className={styles.container}>
@@ -20,16 +23,51 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js</a> with{' '}
-          <a href="https://convex.dev">Convex</a>
+          Let's Vote!
         </h1>
+        <p>Enter your name: <input type="text" value={voter} onChange={(e) => {
+          setVoter(e.target.value);
+        }} />
+        </p>
 
         <p className={styles.description}>
-          {"Here's the counter:"} {counter}
+          Vote on "{election}"
         </p>
-        <button className={styles.button} onClick={incrementByOne}>
-          Add One!
+        {
+          electionResults ?
+          (<div>
+            {electionResults?.firstPastThePostWinner ? <p className={styles.description}>
+          Currently {electionResults?.firstPastThePostWinner} is winning via First Past the Post!
+          </p> : null}
+          {electionResults?.rankedChoiceWinner ? 
+          <p  className={styles.description}>
+          Currently {electionResults?.rankedChoiceWinner} is winning via Ranked Choice!
+          </p> : null}</div>) : null
+        }
+        <p>Enter your preferences, in order</p>
+        <textarea placeholder={`pizza
+poke`} value={candidates} onChange={(e) => {
+          setCandidates(e.target.value);
+        }} />
+        <button className={styles.button} onClick={(e) => {
+          vote({
+            voter,
+            election,
+            candidates: candidates.split("\n"),
+          });
+          setCandidates('');
+        }}>
+          Vote!
         </button>
+        <ul>
+        {
+          topChoices.map(
+            ({candidate, firstChoiceCount}) => (
+              <li key={candidate}>{candidate}: {firstChoiceCount} {firstChoiceCount === 1 ? "person" : "people"}'s first choice</li>
+            )
+          )
+        }
+        </ul>
       </main>
 
       <footer className={styles.footer}>
